@@ -159,6 +159,65 @@ if ( ! class_exists( 'Display_Posts_Remote' ) ) {
 		}
 
 		/**
+		 * Cache the REST response.
+		 *
+		 * @since 1.0
+		 *
+		 * @param string    $url
+		 * @param array     $response
+		 * @param float|int $timeout
+		 */
+		protected function setCache( $url, $response, $timeout = DAY_IN_SECONDS ) {
+
+			set_transient( $this->cacheKey( $url ), $response, $timeout );
+		}
+
+		/**
+		 * Get cached REST response.
+		 *
+		 * @since 1.0
+		 *
+		 * @param string $url
+		 *
+		 * @return array|false
+		 */
+		protected function getCache( $url ) {
+
+			if ( is_array( $response = get_transient( $this->cacheKey( $url ) ) ) ) {
+
+				return $response;
+			}
+
+			return FALSE;
+		}
+
+		/**
+		 * Clear cache.
+		 *
+		 * @since 1.0
+		 *
+		 * @param string $url
+		 */
+		public function clearCache( $url ){
+
+			delete_transient( $this->cacheKey( $url ) );
+		}
+
+		/**
+		 * Create cache key based on URL.
+		 *
+		 * @since 1.0
+		 *
+		 * @param string $url
+		 *
+		 * @return string
+		 */
+		protected function cacheKey( $url ) {
+
+			return md5( preg_replace( '(^https?://)', '', $url ) );
+		}
+
+		/**
 		 * Query a remote site's posts.
 		 *
 		 * @since 1.0
@@ -170,8 +229,9 @@ if ( ! class_exists( 'Display_Posts_Remote' ) ) {
 		public function getPosts( $untrusted ) {
 
 			$defaults = array(
-				'url'         => '',
-				'category_id' => 0,
+				'url'           => '',
+				'category_id'   => 0,
+				'cache_timeout' => DAY_IN_SECONDS,
 			);
 
 			$atts = shortcode_atts( $defaults, $untrusted );
@@ -195,14 +255,30 @@ if ( ! class_exists( 'Display_Posts_Remote' ) ) {
 				$url = add_query_arg( 'categories', $atts['category_id'], $url );
 			}
 
-			$request = wp_safe_remote_get( $url );
+			if ( 0 >= $atts['cache_timeout'] ) {
 
-			if ( is_wp_error( $request ) ) {
-
-				return $request;
+				$this->clearCache( $url );
 			}
 
-			$posts = json_decode( wp_remote_retrieve_body( $request ) );
+			if ( FALSE === $response = $this->getCache( $url ) ) {
+
+				$response = wp_safe_remote_get( $url );
+
+				if ( ! is_wp_error( $response ) && 0 < $atts['cache_timeout'] ) {
+
+					/*
+					 * NOTE: cache will be saved during Gutenberg autosaves via the REST API.
+					 */
+					$this->setCache( $url, $response, $atts['cache_timeout'] );
+				}
+			}
+
+			if ( is_wp_error( $response ) ) {
+
+				return $response;
+			}
+
+			$posts = json_decode( wp_remote_retrieve_body( $response ) );
 
 			if ( JSON_ERROR_NONE !== json_last_error() ) {
 
@@ -237,6 +313,7 @@ if ( ! class_exists( 'Display_Posts_Remote' ) ) {
 				'image_size'            => 'thumbnail',
 				'url'                   => '',
 				'wrapper'               => 'ul',
+				'cache_timeout'         => DAY_IN_SECONDS,
 			);
 		}
 
@@ -265,6 +342,7 @@ if ( ! class_exists( 'Display_Posts_Remote' ) ) {
 			$atts['image_size']            = sanitize_key( $atts['image_size'] );
 			$atts['url']                   = filter_var( $atts['url'], FILTER_SANITIZE_URL );
 			$atts['wrapper']               = sanitize_text_field( $atts['wrapper'] );
+			$atts['cache_timeout']         = absint( $atts['cache_timeout'] );
 
 			return $atts;
 		}
