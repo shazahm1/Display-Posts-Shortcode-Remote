@@ -252,6 +252,11 @@ if ( ! class_exists( 'Display_Posts_Remote' ) ) {
 
 			if ( ! empty( $atts['category_id'] ) ) {
 
+				if ( is_array( $atts['category_id'] ) ) {
+
+					$atts['category_id'] = implode( ',', $atts['category_id'] );
+				}
+
 				$url = add_query_arg( 'categories', $atts['category_id'], $url );
 			}
 
@@ -331,7 +336,7 @@ if ( ! class_exists( 'Display_Posts_Remote' ) ) {
 			$defaults = Display_Posts_Remote()->getDefaults();
 			$atts     = shortcode_atts( $defaults, $untrusted, 'display-posts-remote' );
 
-			$atts['category_id']           = absint( $atts['category_id'] );
+			$atts['category_id']           = wp_parse_id_list( $atts['category_id'] );
 			$atts['content_class']         = array_map( 'sanitize_html_class', ( explode( ' ', $atts['content_class'] ) ) );
 			$atts['date_format']           = sanitize_text_field( $atts['date_format'] );
 			$atts['include_content']       = self::toBoolean( $atts['include_content'] );
