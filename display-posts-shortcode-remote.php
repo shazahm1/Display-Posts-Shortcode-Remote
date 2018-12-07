@@ -11,7 +11,7 @@
  * Plugin Name:       Display Posts Shortcode - Remote
  * Plugin URI:        https://connections-pro.com/
  * Description:       An extension for the Display Posts Shortcode plugin which adds a shortcode for displaying posts from a remote WordPress site.
- * Version:           1.0
+ * Version:           1.1
  * Author:            Steven A. Zahm
  * Author URI:        https://connections-pro.com
  * License:           GPL-2.0+
@@ -24,7 +24,7 @@ if ( ! class_exists( 'Display_Posts_Remote' ) ) {
 
 	final class Display_Posts_Remote {
 
-		const VERSION = '1.0';
+		const VERSION = '1.1';
 
 		/**
 		 * @var Display_Posts_Remote Stores the instance of this class.
@@ -231,6 +231,9 @@ if ( ! class_exists( 'Display_Posts_Remote' ) ) {
 			$defaults = array(
 				'url'           => '',
 				'category_id'   => 0,
+				'per_page'      => 10,
+				'order'         => 'DESC',
+				'orderby'       => 'date',
 				'cache_timeout' => DAY_IN_SECONDS,
 			);
 
@@ -259,6 +262,15 @@ if ( ! class_exists( 'Display_Posts_Remote' ) ) {
 
 				$url = add_query_arg( 'categories', $atts['category_id'], $url );
 			}
+
+			$url = add_query_arg(
+				array(
+					'per_page' => $atts['per_page'],
+					'order'    => $atts['order'],
+					'orderby'  => $atts['orderby'],
+				),
+				$url
+			);
 
 			if ( 0 >= $atts['cache_timeout'] ) {
 
@@ -316,6 +328,11 @@ if ( ! class_exists( 'Display_Posts_Remote' ) ) {
 				'include_link'          => TRUE,
 				'include_title'         => TRUE,
 				'image_size'            => 'thumbnail',
+				'no_posts_message'      => __( 'No posts to display.', 'display-posts-shortcode-remote' ),
+				'order'                 => 'desc',
+				'orderby'               => 'date',
+				'posts_per_page'        => 10,
+				'title'                 => '',
 				'url'                   => '',
 				'wrapper'               => 'ul',
 				'cache_timeout'         => DAY_IN_SECONDS,
@@ -345,9 +362,27 @@ if ( ! class_exists( 'Display_Posts_Remote' ) ) {
 			$atts['include_link']          = self::toBoolean( $atts['include_link'] );
 			$atts['include_title']         = self::toBoolean( $atts['include_title'] );
 			$atts['image_size']            = sanitize_key( $atts['image_size'] );
+			$atts['no_posts_message']      = sanitize_text_field( $atts['no_posts_message'] );
+			$atts['order']                 = in_array( strtolower( $atts['order'] ), array( 'asc', 'desc' ) ) ? strtolower( sanitize_key( $atts['order'] ) ) : 'desc';
+			$atts['orderby']               = in_array( strtolower( $atts['orderby'] ), array( 'date', 'id', 'relevance', 'slug', 'title' ) ) ? strtolower( sanitize_key( $atts['orderby'] ) ) : 'date';
+			$atts['posts_per_page']        = filter_var(
+				$atts['posts_per_page'],
+				FILTER_VALIDATE_INT,
+				array(
+					'options' => array(
+						'min_range' => 1,
+						'max_range' => 100,
+						'default'   => 10,
+					),
+				)
+			);
+			$atts['title']                 = sanitize_text_field( $atts['title'] );
 			$atts['url']                   = filter_var( $atts['url'], FILTER_SANITIZE_URL );
 			$atts['wrapper']               = sanitize_text_field( $atts['wrapper'] );
 			$atts['cache_timeout']         = absint( $atts['cache_timeout'] );
+
+			// Map shortcode option to REST API Parameter.
+			$atts['per_page']              = $atts['posts_per_page'];
 
 			return $atts;
 		}
@@ -379,7 +414,14 @@ if ( ! class_exists( 'Display_Posts_Remote' ) ) {
 
 			if ( empty( $result ) || ! is_array( $result ) ) {
 
-				return '<div>' . __( 'No posts to display.', 'display-posts-shortcode-remote' ) . '</div>';
+				/**
+				 * Filter content to display if no posts match the current query.
+				 *
+				 * @since 1.1
+				 *
+				 * @param string $no_posts_message Content to display, returned via {@see wpautop()}.
+				 */
+				return apply_filters( 'display_posts_shortcode_no_results', wpautop( $atts['no_posts_message'] ) );
 			}
 
 			// Set up html elements used to wrap the posts.
@@ -477,6 +519,23 @@ if ( ! class_exists( 'Display_Posts_Remote' ) ) {
 					'', // $author
 					''  // $category_display_text
 				);
+			}
+
+			if ( 0 < strlen( $atts['title'] ) ) {
+
+				/**
+				 * Filter the shortcode output title tag element.
+				 *
+				 * @since 1.1
+				 *
+				 * @param string $tag           Type of element to use for the output title tag. Default 'h2'.
+				 * @param array  $original_atts Original attributes passed to the shortcode.
+				 */
+				$titleTag = apply_filters( 'display_posts_shortcode_title_tag', 'h2', $atts );
+
+				$heading  = '<' . $titleTag . ' class="display-posts-title">' . $atts['title'] . '</' . $titleTag . '>' . "\n";
+
+				$html = $heading . $html;
 			}
 
 			$open  = "<{$atts['wrapper']} class=\"display-posts-listing\">" . PHP_EOL;
