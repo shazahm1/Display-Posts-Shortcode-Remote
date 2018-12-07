@@ -11,7 +11,7 @@
  * Plugin Name:       Display Posts Shortcode - Remote
  * Plugin URI:        https://connections-pro.com/
  * Description:       An extension for the Display Posts Shortcode plugin which adds a shortcode for displaying posts from a remote WordPress site.
- * Version:           1.1
+ * Version:           1.1.1
  * Author:            Steven A. Zahm
  * Author URI:        https://connections-pro.com
  * License:           GPL-2.0+
@@ -24,7 +24,7 @@ if ( ! class_exists( 'Display_Posts_Remote' ) ) {
 
 	final class Display_Posts_Remote {
 
-		const VERSION = '1.1';
+		const VERSION = '1.1.1';
 
 		/**
 		 * @var Display_Posts_Remote Stores the instance of this class.
@@ -353,6 +353,19 @@ if ( ! class_exists( 'Display_Posts_Remote' ) ) {
 			$defaults = Display_Posts_Remote()->getDefaults();
 			$atts     = shortcode_atts( $defaults, $untrusted, 'display-posts-remote' );
 
+			$restSupportOrderby = array(
+				'author',
+				'date',
+				'id',
+				'include',
+				'modified',
+				'parent',
+				'relevance',
+				'slug',
+				'include_slugs',
+				'title',
+			);
+
 			$atts['category_id']           = wp_parse_id_list( $atts['category_id'] );
 			$atts['content_class']         = array_map( 'sanitize_html_class', ( explode( ' ', $atts['content_class'] ) ) );
 			$atts['date_format']           = sanitize_text_field( $atts['date_format'] );
@@ -364,7 +377,7 @@ if ( ! class_exists( 'Display_Posts_Remote' ) ) {
 			$atts['image_size']            = sanitize_key( $atts['image_size'] );
 			$atts['no_posts_message']      = sanitize_text_field( $atts['no_posts_message'] );
 			$atts['order']                 = in_array( strtolower( $atts['order'] ), array( 'asc', 'desc' ) ) ? strtolower( sanitize_key( $atts['order'] ) ) : 'desc';
-			$atts['orderby']               = in_array( strtolower( $atts['orderby'] ), array( 'date', 'id', 'relevance', 'slug', 'title' ) ) ? strtolower( sanitize_key( $atts['orderby'] ) ) : 'date';
+			$atts['orderby']               = in_array( strtolower( $atts['orderby'] ), $restSupportOrderby ) ? strtolower( sanitize_key( $atts['orderby'] ) ) : 'date';
 			$atts['posts_per_page']        = filter_var(
 				$atts['posts_per_page'],
 				FILTER_VALIDATE_INT,
