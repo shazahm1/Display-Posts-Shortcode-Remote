@@ -240,10 +240,13 @@ if ( ! class_exists( 'Display_Posts_Remote' ) ) {
 					'order'         => 'DESC',
 					'orderby'       => 'date',
 					'cache_timeout' => DAY_IN_SECONDS,
+					'excerpt_length'        => false,
+					'excerpt_more'          => false,
+					'excerpt_more_link'     => false,
+					'include_excerpt' 		=> false,
+					'include_excerpt_dash'  => true,
 				);
 		
-			
-
 			$atts = shortcode_atts( $defaults, $untrusted );
 
 			$atts['url'] = esc_url( filter_var( $atts['url'], FILTER_SANITIZE_URL ) );
@@ -256,6 +259,13 @@ if ( ! class_exists( 'Display_Posts_Remote' ) ) {
 					$atts['url']
 				);
 			}
+			// Getting the excerpt atts
+			$excerpt_length        = (int) $atts['excerpt_length'];
+			$excerpt_more          = sanitize_text_field( $atts['excerpt_more'] );
+			$excerpt_more_link     = filter_var( $atts['excerpt_more_link'], FILTER_VALIDATE_BOOLEAN );
+			$include_excerpt       = filter_var( $atts['include_excerpt'], FILTER_VALIDATE_BOOLEAN );
+			$include_excerpt_dash  = filter_var( $atts['include_excerpt_dash'], FILTER_VALIDATE_BOOLEAN );
+
 
 			$url = trailingslashit( $atts['url'] ) . 'wp-json/wp/v2/posts';
 			$url = add_query_arg( '_embed' , '', $url );
@@ -303,7 +313,7 @@ if ( ! class_exists( 'Display_Posts_Remote' ) ) {
 			}
 
 			$posts = json_decode( wp_remote_retrieve_body( $response ) );
-
+						
 			if ( JSON_ERROR_NONE !== json_last_error() ) {
 
 				return new WP_Error(
@@ -312,8 +322,8 @@ if ( ! class_exists( 'Display_Posts_Remote' ) ) {
 					$posts
 				);
 			}
-
-			return $posts;
+	
+			return $posts;	
 		}
 
 		/**
@@ -400,9 +410,17 @@ if ( ! class_exists( 'Display_Posts_Remote' ) ) {
 			$atts['url']                   = filter_var( $atts['url'], FILTER_SANITIZE_URL );
 			$atts['wrapper']               = sanitize_text_field( $atts['wrapper'] );
 			$atts['cache_timeout']         = absint( $atts['cache_timeout'] );
+			
 
 			// Map shortcode option to REST API Parameter.
 			$atts['per_page']              = $atts['posts_per_page'];
+
+			// Excerpt
+			$atts['excerpt_length']         = isset($untrusted['excerpt_length'])   	? (int) $untrusted['excerpt_length'] 										: $atts['excerpt_length'];
+			$atts['excerpt_more']           = isset($untrusted['excerpt_more']) 		? sanitize_text_field($untrusted['excerpt_more']) 							: $atts['excerpt_more'];
+			$atts['excerpt_more_link']      = isset($untrusted['excerpt_more_link']) 	? filter_var($untrusted['excerpt_more_link'], FILTER_VALIDATE_BOOLEAN) 		: $atts['excerpt_more_link'];
+			$atts['include_excerpt']        = isset($untrusted['include_excerpt']) 		? filter_var($untrusted['include_excerpt'], FILTER_VALIDATE_BOOLEAN) 		: $atts['include_excerpt'];
+			$atts['include_excerpt_dash']   = isset($untrusted['include_excerpt_dash']) ? filter_var($untrusted['include_excerpt_dash'], FILTER_VALIDATE_BOOLEAN) 	: $atts['include_excerpt_dash'];
 
 			return $atts;
 		}
@@ -458,6 +476,8 @@ if ( ! class_exists( 'Display_Posts_Remote' ) ) {
 				$image = $date = $postContent = '';
 
 				$post = new Display_Posts_Remote_Post( $data );
+				$excerpt = '';
+
 
 				if ( $atts['include_title'] && $atts['include_link'] ) {
 
@@ -505,6 +525,24 @@ if ( ! class_exists( 'Display_Posts_Remote' ) ) {
 
 					$postContent = '<div class="' . implode( ' ', $atts['content_class'] ) . '">' . $post->get_the_content() . '</div>';
 				}
+				// If excerpt is filled 
+				if ( $atts['include_excerpt'] ) {
+					
+					$excerpt = isset($data->excerpt->rendered) ? wpautop($data->excerpt->rendered) : '';
+					if ($atts['include_excerpt_dash']) {
+						$excerpt = '<span class="excerpt-dash">-</span>' . $excerpt;
+					}
+					
+				}
+				 // If excerpt isn't provided, create it from content
+				 if (empty($excerpt) && $atts['include_excerpt']) {
+					$content = isset($data->content->rendered) ? wpautop($data->content->rendered) : '';
+					$excerpt = wp_trim_words(strip_shortcodes($content), $atts['excerpt_length']);
+					if ($atts['excerpt_more']) {
+						$excerpt .= ' ' . $atts['excerpt_more'];
+					}
+				}
+		
 
 				/**
 				 * Filter the HTML markup for output via the shortcode.
@@ -527,12 +565,12 @@ if ( ! class_exists( 'Display_Posts_Remote' ) ) {
 				 */
 				$html .= apply_filters(
 					'display_posts_shortcode_output',
-					"<{$itemElement} class=\"listing-item\">{$image}{$title}{$date}{$postContent}</{$itemElement}>" . PHP_EOL,
+					"<{$itemElement} class=\"listing-item\">{$image}{$title}{$date}{$postContent}{$excerpt}</{$itemElement}>" . PHP_EOL,
 					array(), // $original_atts
 					$image,
 					$title,
 					$date,
-					'', // $excerpt
+					$excerpt, // $excerpt
 					$itemElement, // $inner_wrapper
 					$postContent, // $content
 					array( 'listing-item' ), // $class
