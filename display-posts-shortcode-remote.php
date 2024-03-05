@@ -20,6 +20,11 @@
  * Domain Path:       /languages
  */
 
+/**
+ * author Ramin Farhadi
+ * since 0.1.0ß
+ */
+
 if ( ! class_exists( 'Display_Posts_Remote' ) ) {
 
 	final class Display_Posts_Remote {
@@ -227,10 +232,10 @@ if ( ! class_exists( 'Display_Posts_Remote' ) ) {
 		 * @return array|WP_Error
 		 */
 		public function getPosts( $untrusted ) {
-
+			//Category Id was disabled in order to list all the posts available.  
 			$defaults = array(
 				'url'           => '',
-				'category_id'   => 0,
+				// 'category_id'   => 0,
 				'per_page'      => 10,
 				'order'         => 'DESC',
 				'orderby'       => 'date',
