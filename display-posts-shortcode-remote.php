@@ -232,15 +232,17 @@ if ( ! class_exists( 'Display_Posts_Remote' ) ) {
 		 * @return array|WP_Error
 		 */
 		public function getPosts( $untrusted ) {
-			//Category Id was disabled in order to list all the posts available.  
-			$defaults = array(
-				'url'           => '',
-				// 'category_id'   => 0,
-				'per_page'      => 10,
-				'order'         => 'DESC',
-				'orderby'       => 'date',
-				'cache_timeout' => DAY_IN_SECONDS,
-			);
+			
+				$defaults = array(
+					'url'           => '',
+					'category_id'	=> '',
+					'per_page'      => 10,
+					'order'         => 'DESC',
+					'orderby'       => 'date',
+					'cache_timeout' => DAY_IN_SECONDS,
+				);
+		
+			
 
 			$atts = shortcode_atts( $defaults, $untrusted );
 
@@ -324,7 +326,7 @@ if ( ! class_exists( 'Display_Posts_Remote' ) ) {
 		public function getDefaults() {
 
 			return array(
-				'category_id'           => 0,
+				'category_id'           => '',
 				'content_class'         => 'content',
 				'date_format'           => '(n/j/Y)',
 				'include_content'       => FALSE,
