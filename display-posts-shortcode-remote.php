@@ -21,8 +21,8 @@
  */
 
 /**
- * author Ramin Farhadi
- * since 0.1.0ß
+ * Forked by Ramin Farhadi
+ * since 0.1.0
  */
 
 if ( ! class_exists( 'Display_Posts_Remote' ) ) {
